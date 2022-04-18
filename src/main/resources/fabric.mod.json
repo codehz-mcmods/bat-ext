@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "id": "${mod_id}",
   "version": "${version}",
-  "name": "Vanilla Laser",
-  "description": "Laser Beam for vanilla minecraft (Server side)",
+  "name": "Bat Extensions",
+  "description": "Extend vanilla bat entity",
   "authors": [
     "CodeHz"
   ],
@@ -14,11 +14,16 @@
   "license": "GPL-3.0",
   "icon": "assets/${mod_id}/icon.png",
   "environment": "*",
-  "entrypoints": {},
+  "entrypoints": {
+    "main": [
+      "moe.hertz.bat_ext.BatExt"
+    ]
+  },
   "mixins": [],
   "depends": {
     "fabricloader": "*",
     "fabric": "*",
-    "minecraft": "*"
+    "minecraft": "~1.18.2",
+    "side-effects": "~0.1.5"
   }
 }
