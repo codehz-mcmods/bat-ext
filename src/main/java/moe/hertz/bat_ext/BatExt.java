@@ -12,7 +12,7 @@ public class BatExt implements ModInitializer {
 
   @Override
   public void onInitialize() {
-    FabricDefaultAttributeRegistry.register(BatTrader.TYPE, BatTrader.createBatAttributes());
+    FabricDefaultAttributeRegistry.register(BatTrader.TYPE, BatTrader.createBatTraderAttributes());
     ResourceManagerHelper.get(ResourceType.SERVER_DATA).registerReloadListener(BAT_TRADERS);
   }
 }

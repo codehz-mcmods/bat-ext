@@ -9,6 +9,7 @@ import moe.hertz.bat_ext.mixins.TradeOfferMixin;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.StringNbtReader;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.JsonHelper;
@@ -17,11 +18,14 @@ import net.minecraft.village.TradeOffer;
 import net.minecraft.village.TradeOfferList;
 
 public class BatTraderData {
-    @Getter
-    private final TradeOfferList offerList;
+    private final NbtCompound offerListData;
 
     private BatTraderData(TradeOfferList offerList) {
-        this.offerList = offerList;
+        this.offerListData = offerList.toNbt();
+    }
+
+    public TradeOfferList generateOfferList() {
+        return new TradeOfferList(this.offerListData);
     }
 
     public static BatTraderData read(JsonObject json) {
