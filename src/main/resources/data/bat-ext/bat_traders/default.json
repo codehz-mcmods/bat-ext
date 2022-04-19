@@ -1,0 +1,7 @@
+{
+  "offers": [{
+    "buy": { "item": "minecraft:cobblestone", "count": 64 },
+    "sell": { "item": "minecraft:apple", "count": 1 },
+    "maxUses": 20
+  }]
+}

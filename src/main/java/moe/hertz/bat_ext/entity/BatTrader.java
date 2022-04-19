@@ -3,7 +3,6 @@ package moe.hertz.bat_ext.entity;
 import java.util.EnumSet;
 
 import lombok.Getter;
-import lombok.Setter;
 import moe.hertz.bat_ext.BatExt;
 import moe.hertz.side_effects.IFakeEntity;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricEntityTypeBuilder;
@@ -20,9 +19,15 @@ import net.minecraft.entity.ai.pathing.EntityNavigation;
 import net.minecraft.entity.ai.pathing.PathNodeType;
 import net.minecraft.entity.attribute.DefaultAttributeContainer;
 import net.minecraft.entity.attribute.EntityAttributes;
+import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.passive.BatEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtElement;
+import net.minecraft.particle.ItemStackParticleEffect;
+import net.minecraft.particle.ParticleTypes;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundEvent;
@@ -51,13 +56,20 @@ public class BatTrader extends BatEntity implements IFakeEntity, Merchant, Npc, 
           .build());
 
   @Getter
-  @Setter
   private PlayerEntity customer;
   private TradeOfferList offers;
   @Getter
   private int experience;
   @Getter
   private boolean leveledMerchant;
+
+  @Override
+  public void setCustomer(PlayerEntity player) {
+    if (customer == player)
+      return;
+    goalSelector.setControlEnabled(Goal.Control.MOVE, player == null);
+    customer = player;
+  }
 
   public BatTrader(EntityType<? extends BatEntity> entityType, World world) {
     super(entityType, world);
@@ -67,7 +79,23 @@ public class BatTrader extends BatEntity implements IFakeEntity, Merchant, Npc, 
   }
 
   public static DefaultAttributeContainer.Builder createBatTraderAttributes() {
-    return createBatAttributes().add(EntityAttributes.GENERIC_FLYING_SPEED, 1.0f);
+    return createBatAttributes()
+        .add(EntityAttributes.GENERIC_MAX_HEALTH, 1)
+        .add(EntityAttributes.GENERIC_FLYING_SPEED, 1);
+  }
+
+  @Override
+  public void readCustomDataFromNbt(NbtCompound nbt) {
+    super.readCustomDataFromNbt(nbt);
+    if (nbt.contains("Offers", NbtElement.COMPOUND_TYPE)) {
+      this.offers = new TradeOfferList(nbt.getCompound("Offers"));
+    }
+  }
+
+  @Override
+  public void writeCustomDataToNbt(NbtCompound nbt) {
+    super.writeCustomDataToNbt(nbt);
+    nbt.put("Offers", this.offers.toNbt());
   }
 
   @Override
@@ -77,6 +105,7 @@ public class BatTrader extends BatEntity implements IFakeEntity, Merchant, Npc, 
       public boolean isValidPosition(BlockPos pos) {
         return true;
       }
+
       @Override
       public void tick() {
         if (isRoosting())
@@ -290,14 +319,21 @@ public class BatTrader extends BatEntity implements IFakeEntity, Merchant, Npc, 
 
   @Override
   public Entity moveToWorld(ServerWorld destination) {
-    customer = null;
+    setCustomer(null);
     return super.moveToWorld(destination);
   }
 
   @Override
+  public void onDeath(DamageSource source) {
+    setCustomer(null);
+    super.onDeath(source);
+  }
+
+  @Override
   protected ActionResult interactMob(PlayerEntity player, Hand hand) {
-    if (hand == Hand.MAIN_HAND && player instanceof ServerPlayerEntity serverPlayer) {
-      customer = player;
+    if (isRoosting() && hand == Hand.MAIN_HAND && player instanceof ServerPlayerEntity serverPlayer) {
+      setCustomer(player);
+      goalSelector.disableControl(Goal.Control.MOVE);
       sendOffers(player, Text.of("BAT TRADER"), 0);
       return ActionResult.SUCCESS;
     }
@@ -316,5 +352,12 @@ public class BatTrader extends BatEntity implements IFakeEntity, Merchant, Npc, 
 
   @Override
   protected void mobTick() {
+    // TODO: Optimize this
+    if (world instanceof ServerWorld sw) {
+      var vel = getVelocity();
+      sw.spawnParticles(
+          new ItemStackParticleEffect(ParticleTypes.ITEM, Items.APPLE.getDefaultStack()),
+          getX(), getY(), getZ(), 1, vel.x, vel.y, vel.z, 1.0);
+    }
   }
 }
