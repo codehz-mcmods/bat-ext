@@ -19,7 +19,9 @@
       "moe.hertz.bat_ext.BatExt"
     ]
   },
-  "mixins": [],
+  "mixins": [
+    "bat-ext.mixins.json"
+  ],
   "depends": {
     "fabricloader": "*",
     "fabric": "*",
