@@ -4,7 +4,6 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
-import lombok.Getter;
 import moe.hertz.bat_ext.mixins.TradeOfferMixin;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;

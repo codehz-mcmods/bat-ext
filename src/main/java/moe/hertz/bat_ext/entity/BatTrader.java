@@ -1,6 +1,5 @@
 package moe.hertz.bat_ext.entity;
 
-import java.util.Comparator;
 import java.util.EnumSet;
 
 import lombok.Getter;
@@ -21,7 +20,6 @@ import net.minecraft.entity.ai.pathing.EntityNavigation;
 import net.minecraft.entity.ai.pathing.PathNodeType;
 import net.minecraft.entity.attribute.DefaultAttributeContainer;
 import net.minecraft.entity.attribute.EntityAttributes;
-import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.entity.passive.BatEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
@@ -30,7 +28,6 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundEvent;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
-import net.minecraft.text.Texts;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.util.Identifier;
@@ -116,9 +113,8 @@ public class BatTrader extends BatEntity implements IFakeEntity, Merchant, Npc, 
       }
       this.delay = FindTargetGoal.toGoalTicks(60);
       var selected = world.getClosestPlayer(PLAYERS_IN_RANGE_PREDICATE, BatTrader.this);
-      if (selected != null && selected instanceof ServerPlayerEntity player) {
+      if (selected != null) {
         setTarget(selected);
-        player.sendMessage(Text.of("capture"), false);
         return true;
       }
       return false;
@@ -132,10 +128,6 @@ public class BatTrader extends BatEntity implements IFakeEntity, Merchant, Npc, 
           return true;
         }
         setTarget(null);
-        if (target instanceof ServerPlayerEntity player) {
-          player.sendMessage(Text.of(String.format("lost: (%b %b %f)", target.isAlive(), target.isSpectator(),
-              target.squaredDistanceTo(BatTrader.this))), false);
-        }
       }
       return false;
     }
@@ -158,20 +150,12 @@ public class BatTrader extends BatEntity implements IFakeEntity, Merchant, Npc, 
 
     @Override
     public void start() {
-      setGlowing(true);
-      if (getTarget() instanceof ServerPlayerEntity player) {
-        player.sendMessage(Text.of("start"), false);
-      }
       navigation.startMovingTo(getTarget(), 1.0);
     }
 
     @Override
     public void stop() {
-      setGlowing(false);
       navigation.stop();
-      if (getTarget() instanceof ServerPlayerEntity player) {
-        player.sendMessage(Text.of("stop"), false);
-      }
     }
 
     public boolean shouldContinue() {
