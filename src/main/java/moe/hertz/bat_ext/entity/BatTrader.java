@@ -1,9 +1,12 @@
 package moe.hertz.bat_ext.entity;
 
 import java.util.EnumSet;
+import java.util.Objects;
 
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import moe.hertz.bat_ext.BatExt;
+import moe.hertz.bat_ext.data.BatTraderData;
 import moe.hertz.side_effects.IFakeEntity;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricEntityTypeBuilder;
 import net.minecraft.entity.Entity;
@@ -23,11 +26,8 @@ import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.passive.BatEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
-import net.minecraft.particle.ItemStackParticleEffect;
-import net.minecraft.particle.ParticleTypes;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundEvent;
@@ -45,6 +45,7 @@ import net.minecraft.village.TradeOffer;
 import net.minecraft.village.TradeOfferList;
 import net.minecraft.world.World;
 
+@Slf4j
 public class BatTrader extends BatEntity implements IFakeEntity, Merchant, Npc, ICustomBatEntity {
   public static final EntityType<BatTrader> TYPE = Registry.register(
       Registry.ENTITY_TYPE,
@@ -59,9 +60,8 @@ public class BatTrader extends BatEntity implements IFakeEntity, Merchant, Npc, 
   private PlayerEntity customer;
   private TradeOfferList offers;
   @Getter
-  private int experience;
-  @Getter
-  private boolean leveledMerchant;
+  private Identifier subType = new Identifier("bat-ext:default");
+  private BatTraderData assocData;
 
   @Override
   public void setCustomer(PlayerEntity player) {
@@ -90,12 +90,16 @@ public class BatTrader extends BatEntity implements IFakeEntity, Merchant, Npc, 
     if (nbt.contains("Offers", NbtElement.COMPOUND_TYPE)) {
       this.offers = new TradeOfferList(nbt.getCompound("Offers"));
     }
+    if (nbt.contains("SubType", NbtElement.STRING_TYPE)) {
+      this.subType = new Identifier(nbt.getString("SubType"));
+    }
   }
 
   @Override
   public void writeCustomDataToNbt(NbtCompound nbt) {
     super.writeCustomDataToNbt(nbt);
     nbt.put("Offers", this.offers.toNbt());
+    nbt.putString("SubType", this.subType.toString());
   }
 
   @Override
@@ -159,6 +163,15 @@ public class BatTrader extends BatEntity implements IFakeEntity, Merchant, Npc, 
         setTarget(null);
       }
       return false;
+    }
+
+    @Override
+    public void tick() {
+      if (world instanceof ServerWorld sw) {
+        var particle = getAssocData().getParticle();
+        var vel = getVelocity();
+        sw.spawnParticles(particle, getX(), getY(), getZ(), 1, vel.x, vel.y, vel.z, 1.0);
+      }
     }
   }
 
@@ -286,15 +299,22 @@ public class BatTrader extends BatEntity implements IFakeEntity, Merchant, Npc, 
     return EntityType.BAT;
   }
 
+  public BatTraderData getAssocData() {
+    if (assocData == null) {
+      assocData = BatExt.BAT_TRADERS.getRegistry().get(this.subType);
+      if (assocData == null) {
+        log.warn("Subtype {} is not found, use default bat-ext:default", this.subType);
+        assocData = BatExt.BAT_TRADERS.getRegistry().get(new Identifier("bat-ext:default"));
+        Objects.requireNonNull(assocData, "Subtype bat-ext:default is not defined");
+      }
+    }
+    return assocData;
+  }
+
   @Override
   public TradeOfferList getOffers() {
     if (offers == null) {
-      var traders = BatExt.BAT_TRADERS.getRegistry().values();
-      if (!traders.isEmpty()) {
-        offers = traders.iterator().next().generateOfferList();
-      } else {
-        offers = new TradeOfferList();
-      }
+      offers = getAssocData().generateOfferList();
     }
     return offers;
   }
@@ -305,7 +325,7 @@ public class BatTrader extends BatEntity implements IFakeEntity, Merchant, Npc, 
   }
 
   @Override
-  public void setExperienceFromServer(int var1) {
+  public void setExperienceFromServer(int experience) {
   }
 
   @Override
@@ -352,12 +372,15 @@ public class BatTrader extends BatEntity implements IFakeEntity, Merchant, Npc, 
 
   @Override
   protected void mobTick() {
-    // TODO: Optimize this
-    if (world instanceof ServerWorld sw) {
-      var vel = getVelocity();
-      sw.spawnParticles(
-          new ItemStackParticleEffect(ParticleTypes.ITEM, Items.APPLE.getDefaultStack()),
-          getX(), getY(), getZ(), 1, vel.x, vel.y, vel.z, 1.0);
-    }
+  }
+
+  @Override
+  public int getExperience() {
+    return 0;
+  }
+
+  @Override
+  public boolean isLeveledMerchant() {
+    return false;
   }
 }

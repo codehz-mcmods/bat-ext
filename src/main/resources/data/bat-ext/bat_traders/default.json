@@ -1,4 +1,8 @@
 {
+  "particle": {
+    "name": "minecraft:falling_dust",
+    "parameter": "minecraft:apple"
+  },
   "offers": [{
     "buy": { "item": "minecraft:cobblestone", "count": 64 },
     "sell": { "item": "minecraft:apple", "count": 1 },
