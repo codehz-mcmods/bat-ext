@@ -10,7 +10,6 @@ import blue.endless.jankson.annotation.Nullable;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import moe.hertz.bat_ext.mixins.TradeOfferMixin;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -68,14 +67,13 @@ public class BatTraderData {
     }
 
     private static TradeOffer getTradeOffer(JsonObject offer) {
-        var first = getItemStackFrom(offer, "buy");
-        var second = getOptionalItemStackFrom(offer, "buyB");
+        var first = getItemStackFrom(offer, "buy_1");
+        var second = getOptionalItemStackFrom(offer, "buy_2");
         var output = getItemStackFrom(offer, "sell");
         var max = JsonHelper.getInt(offer, "count");
         var xp = JsonHelper.getInt(offer, "xp", 0);
         var priceMultiplier = JsonHelper.getFloat(offer, "price_multiplier", 0f);
-        var demand = JsonHelper.getInt(offer, "demand", 0);
-        return new TradeOffer(first, second, output, 0, max, xp, priceMultiplier, demand);
+        return new TradeOffer(first, second, output, 0, max, xp, priceMultiplier);
     }
 
     private static TradeOfferList readTradeOfferList(JsonArray offers) {

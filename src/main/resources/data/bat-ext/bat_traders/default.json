@@ -1,11 +1,11 @@
 {
   "particle": {
-    "name": "minecraft:falling_dust",
-    "parameter": "minecraft:apple"
+    "name": "minecraft:ambient_entity_effect"
   },
   "offers": [{
-    "buy": { "item": "minecraft:cobblestone", "count": 64 },
+    "buy_1": { "item": "minecraft:cobblestone", "count": 64 },
     "sell": { "item": "minecraft:apple", "count": 1 },
-    "maxUses": 20
+    "xp": 1,
+    "count": 20
   }]
 }

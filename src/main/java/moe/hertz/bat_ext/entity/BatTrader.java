@@ -87,19 +87,19 @@ public class BatTrader extends BatEntity implements IFakeEntity, Merchant, Npc, 
   @Override
   public void readCustomDataFromNbt(NbtCompound nbt) {
     super.readCustomDataFromNbt(nbt);
-    if (nbt.contains("Offers", NbtElement.COMPOUND_TYPE)) {
-      this.offers = new TradeOfferList(nbt.getCompound("Offers"));
-    }
     if (nbt.contains("SubType", NbtElement.STRING_TYPE)) {
       this.subType = new Identifier(nbt.getString("SubType"));
+    }
+    if (nbt.contains("Offers", NbtElement.COMPOUND_TYPE)) {
+      this.offers = new TradeOfferList(nbt.getCompound("Offers"));
     }
   }
 
   @Override
   public void writeCustomDataToNbt(NbtCompound nbt) {
     super.writeCustomDataToNbt(nbt);
-    nbt.put("Offers", this.offers.toNbt());
     nbt.putString("SubType", this.subType.toString());
+    nbt.put("Offers", this.getOffers().toNbt());
   }
 
   @Override
@@ -262,17 +262,17 @@ public class BatTrader extends BatEntity implements IFakeEntity, Merchant, Npc, 
   }
 
   class TakeOffGoal extends MovementGoal {
-    private int delay = Goal.toGoalTicks(100);
+    private int delay = Goal.toGoalTicks(400);
 
     @Override
     public boolean canStart() {
-      if (!isRoosting())
+      if (!isRoosting() && getTarget() != null)
         return false;
       if (this.delay > 0) {
         --this.delay;
         return false;
       }
-      this.delay = Goal.toGoalTicks(200);
+      this.delay = Goal.toGoalTicks(400);
       return getTarget() != null;
     }
 
