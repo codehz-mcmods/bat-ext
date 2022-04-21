@@ -4,6 +4,7 @@ import java.util.EnumSet;
 import java.util.Objects;
 
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import moe.hertz.bat_ext.BatExt;
 import moe.hertz.bat_ext.data.BatTraderData;
@@ -26,8 +27,10 @@ import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.passive.BatEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
+import net.minecraft.particle.ParticleTypes;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundEvent;
@@ -62,6 +65,9 @@ public class BatTrader extends BatEntity implements IFakeEntity, Merchant, Npc, 
   @Getter
   private Identifier subType = new Identifier("bat-ext:default");
   private BatTraderData assocData;
+  @Getter
+  @Setter
+  private boolean sticky;
 
   @Override
   public void setCustomer(PlayerEntity player) {
@@ -93,6 +99,11 @@ public class BatTrader extends BatEntity implements IFakeEntity, Merchant, Npc, 
     if (nbt.contains("Offers", NbtElement.COMPOUND_TYPE)) {
       this.offers = new TradeOfferList(nbt.getCompound("Offers"));
     }
+    if (nbt.contains("Sticky", NbtElement.BYTE_TYPE)) {
+      this.sticky = nbt.getBoolean("Sticky");
+      if (sticky)
+        setRoosting(true);
+    }
   }
 
   @Override
@@ -100,6 +111,7 @@ public class BatTrader extends BatEntity implements IFakeEntity, Merchant, Npc, 
     super.writeCustomDataToNbt(nbt);
     nbt.putString("SubType", this.subType.toString());
     nbt.put("Offers", this.getOffers().toNbt());
+    nbt.putBoolean("Sticky", sticky);
   }
 
   @Override
@@ -128,6 +140,8 @@ public class BatTrader extends BatEntity implements IFakeEntity, Merchant, Npc, 
     this.goalSelector.add(1, new FlyToTargetGoal());
     this.goalSelector.add(2, new FlyAroundGoal());
     this.goalSelector.add(3, new TakeOffGoal());
+    this.goalSelector.add(4, new ParticleGoal());
+    this.goalSelector.add(5, new StickyParticleGoal());
     this.targetSelector.add(1, new FindTargetGoal());
   }
 
@@ -138,7 +152,7 @@ public class BatTrader extends BatEntity implements IFakeEntity, Merchant, Npc, 
 
     @Override
     public boolean canStart() {
-      if (customer != null)
+      if (customer != null || isRoosting())
         return false;
       if (this.delay > 0) {
         --this.delay;
@@ -157,21 +171,63 @@ public class BatTrader extends BatEntity implements IFakeEntity, Merchant, Npc, 
     public boolean shouldContinue() {
       var target = getTarget();
       if (target != null) {
-        if (target.isAlive() && !target.isSpectator() && target.squaredDistanceTo(BatTrader.this) < 1024.0) {
+        if (!isRoosting() && target.isAlive() && !target.isSpectator() && target.squaredDistanceTo(BatTrader.this) < 1024.0) {
           return true;
         }
         setTarget(null);
       }
       return false;
     }
+  }
+
+  class ParticleGoal extends Goal {
+    private int delay = Goal.toGoalTicks(10);
+    @Override
+    public boolean canStart() {
+      if (this.delay > 0) {
+        --this.delay;
+        return false;
+      }
+      this.delay = Goal.toGoalTicks(10);
+      return true;
+    }
 
     @Override
-    public void tick() {
-      if (world instanceof ServerWorld sw) {
-        var particle = getAssocData().getParticle();
-        var vel = getVelocity();
-        sw.spawnParticles(particle, getX(), getY(), getZ(), 1, vel.x, vel.y, vel.z, 1.0);
+    public void start() {
+      var sw = (ServerWorld) world;
+      var particle = getAssocData().getParticle();
+      var vel = getVelocity();
+      sw.spawnParticles(particle, getX(), getY(), getZ(), 1, vel.x, vel.y, vel.z, 1.0);
+    }
+
+    @Override
+    public boolean shouldContinue() {
+      return false;
+    }
+  }
+
+  class StickyParticleGoal extends Goal {
+    private int delay = Goal.toGoalTicks(100);
+
+    @Override
+    public boolean canStart() {
+      if (this.delay > 0) {
+        --this.delay;
+        return false;
       }
+      this.delay = Goal.toGoalTicks(100);
+      return sticky;
+    }
+
+    @Override
+    public void start() {
+      var sw = (ServerWorld) world;
+      sw.spawnParticles(ParticleTypes.FALLING_HONEY, getX(), getY(), getZ(), 1, 0, 0, 0, 1.0);
+    }
+
+    @Override
+    public boolean shouldContinue() {
+      return false;
     }
   }
 
@@ -266,14 +322,26 @@ public class BatTrader extends BatEntity implements IFakeEntity, Merchant, Npc, 
 
     @Override
     public boolean canStart() {
-      if (!isRoosting() && getTarget() != null)
+      if (!isRoosting())
         return false;
+      if (customer != null) {
+        this.delay = Goal.toGoalTicks(400);
+        return false;
+      }
+      if (sticky) {
+        BlockPos blockPos = getBlockPos().up();
+        if (world.getBlockState(blockPos).isSolidBlock(world, blockPos)) {
+          return false;
+        }
+        sticky = false;
+        return true;
+      }
       if (this.delay > 0) {
         --this.delay;
         return false;
       }
       this.delay = Goal.toGoalTicks(400);
-      return getTarget() != null;
+      return true;
     }
 
     @Override
@@ -351,11 +419,23 @@ public class BatTrader extends BatEntity implements IFakeEntity, Merchant, Npc, 
 
   @Override
   protected ActionResult interactMob(PlayerEntity player, Hand hand) {
-    if (isRoosting() && hand == Hand.MAIN_HAND && player instanceof ServerPlayerEntity serverPlayer) {
-      setCustomer(player);
-      goalSelector.disableControl(Goal.Control.MOVE);
-      sendOffers(player, Text.of("BAT TRADER"), 0);
-      return ActionResult.SUCCESS;
+    if (isRoosting() && player instanceof ServerPlayerEntity serverPlayer) {
+      if (!this.sticky) {
+        var item = serverPlayer.getStackInHand(hand);
+        if (item.isOf(Items.HONEY_BOTTLE)) {
+          this.sticky = true;
+          serverPlayer.setStackInHand(hand, Items.GLASS_BOTTLE.getDefaultStack());
+          serverPlayer.getWorld()
+              .spawnParticles(ParticleTypes.DRIPPING_HONEY, getX(), getY(), getZ(), 4, 0, 0, 0, 1.0);
+          return ActionResult.SUCCESS;
+        }
+      }
+      if (hand == Hand.MAIN_HAND) {
+        setCustomer(player);
+        goalSelector.disableControl(Goal.Control.MOVE);
+        sendOffers(player, Text.of("BAT TRADER"), 0);
+        return ActionResult.SUCCESS;
+      }
     }
     return super.interactMob(player, hand);
   }
