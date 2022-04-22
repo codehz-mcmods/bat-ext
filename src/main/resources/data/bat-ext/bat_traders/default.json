@@ -7,5 +7,10 @@
     "sell": { "item": "minecraft:apple", "count": 1 },
     "xp": 1,
     "count": 20
-  }]
+  }, {
+    "buy_1": { "item": "minecraft:rotten_flesh", "count": 8 },
+    "sell": { "item": "minecraft:suspicious_stew{Effects:[{EffectId:17b,EffectDuration:100},{EffectId:23b,EffectDuration:100}]}", "count": 1 },
+    "xp": 1,
+    "count": 8
+  }, {}]
 }
