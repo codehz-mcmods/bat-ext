@@ -47,7 +47,6 @@ dependencies {
     // Fabric API. This is technically optional, but you probably want it anyway.
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
-    modImplementation "com.gitlab.Lortseam:completeconfig:1.4.0"
     include modImplementation("moe.hertz:side-effects:v0.1.5")
 
     compileOnly 'org.projectlombok:lombok:1.18.22'
