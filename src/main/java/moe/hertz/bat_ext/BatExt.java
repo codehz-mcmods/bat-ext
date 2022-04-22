@@ -8,7 +8,7 @@ import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.minecraft.resource.ResourceType;
 
 public class BatExt implements ModInitializer {
-  public static BatTraderLoader BAT_TRADERS = new BatTraderLoader();
+  public static final BatTraderLoader BAT_TRADERS = new BatTraderLoader();
 
   @Override
   public void onInitialize() {
