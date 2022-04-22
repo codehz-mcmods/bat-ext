@@ -1,12 +1,13 @@
 package moe.hertz.bat_ext.data;
 
+import javax.annotation.Nullable;
+
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
 import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
-import blue.endless.jankson.annotation.Nullable;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -72,8 +73,7 @@ public class BatTraderData {
         var output = getItemStackFrom(offer, "sell");
         var max = JsonHelper.getInt(offer, "count");
         var xp = JsonHelper.getInt(offer, "xp", 0);
-        var priceMultiplier = JsonHelper.getFloat(offer, "price_multiplier", 0f);
-        return new TradeOffer(first, second, output, 0, max, xp, priceMultiplier);
+        return new TradeOffer(first, second, output, 0, max, xp, 0);
     }
 
     private static TradeOfferList readTradeOfferList(JsonArray offers) {
@@ -95,27 +95,22 @@ public class BatTraderData {
     }
 
     private static ItemStack readItemStack(JsonObject json) {
-        var item = getItem(json);
-        var count = JsonHelper.getInt(json, "count");
-        var stack = new ItemStack(item, count);
-        var tag = JsonHelper.getString(json, "tag", "");
-        if (!tag.isEmpty()) {
-            try {
-                stack.setNbt(StringNbtReader.parse(tag));
-            } catch (CommandSyntaxException e) {
-                throw new JsonSyntaxException("Failed to parse nbt: " + tag, e);
+        var itemStr = JsonHelper.getString(json, "item");
+        var itemInput = new StringReader(itemStr);
+        try {
+            Item item = Registry.ITEM.getOrEmpty(Identifier.fromCommandInput(itemInput))
+                    .orElseThrow(() -> new JsonSyntaxException("Unknown item '" + itemStr + "'"));
+            if (item == Items.AIR) {
+                throw new JsonSyntaxException("Invalid item: " + itemStr);
             }
+            var count = JsonHelper.getInt(json, "count");
+            var stack = new ItemStack(item, count);
+            if (itemInput.canRead() && itemInput.peek() == '{') {
+                stack.setNbt(new StringNbtReader(itemInput).parseCompound());
+            }
+            return stack;
+        } catch (CommandSyntaxException e) {
+            throw new JsonSyntaxException("Invalid item: " + itemStr);
         }
-        return stack;
-    }
-
-    private static Item getItem(JsonObject json) {
-        String string = JsonHelper.getString(json, "item");
-        Item item = Registry.ITEM.getOrEmpty(new Identifier(string))
-                .orElseThrow(() -> new JsonSyntaxException("Unknown item '" + string + "'"));
-        if (item == Items.AIR) {
-            throw new JsonSyntaxException("Invalid item: " + string);
-        }
-        return item;
     }
 }
